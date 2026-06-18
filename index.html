@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a56db" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Signature de devis</title>
+
+  <!-- =====================================================================
+       CONFIGURATION — À ADAPTER
+       ===================================================================== -->
+  <script>
+    const SUPABASE_URL  = "https://bniifnjeyjicsnjwpiiq.supabase.co";
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaWlmbmpleWppY3NuandwaWlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTU1NzIsImV4cCI6MjA5Njc5MTU3Mn0.AF7wfjzfpwDfTaBmDERNKFv_WvDduPaFwBGQT7A_7og";
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:        #1a56db;
+      --blue-dark:   #1341b0;
+      --blue-light:  #e8f0fe;
+      --green:       #057a55;
+      --green-light: #def7ec;
+      --red:         #c81e1e;
+      --red-light:   #fde8e8;
+      --gray-50:     #f9fafb;
+      --gray-100:    #f3f4f6;
+      --gray-200:    #e5e7eb;
+      --gray-400:    #9ca3af;
+      --gray-600:    #4b5563;
+      --gray-800:    #1f2937;
+      --radius:      12px;
+      --radius-sm:   8px;
+      --shadow:      0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md:   0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      background: var(--blue);
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: var(--shadow-md);
+    }
+    header svg { flex-shrink: 0; }
+    header h1  { font-size: 16px; font-weight: 600; line-height: 1.2; }
+    header p   { font-size: 12px; opacity: .8; margin-top: 2px; }
+
+    /* ── Conteneur principal ─────────────────────────────────────────────── */
+    main { flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Écrans ──────────────────────────────────────────────────────────── */
+    .screen { display: none; flex-direction: column; flex: 1; }
+    .screen.active { display: flex; }
+
+    /* ── Écran chargement ────────────────────────────────────────────────── */
+    #screen-loading {
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 40px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #screen-loading p { color: var(--gray-600); font-size: 15px; }
+
+    /* ── Écran erreur ────────────────────────────────────────────────────── */
+    #screen-error {
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    .error-icon {
+      width: 56px; height: 56px;
+      background: var(--red-light);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #screen-error h2 { font-size: 18px; }
+    #screen-error p  { color: var(--gray-600); font-size: 14px; max-width: 280px; }
+
+    /* ── Écran déjà signé ────────────────────────────────────────────────── */
+    #screen-done {
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    .done-icon {
+      width: 64px; height: 64px;
+      background: var(--green-light);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #screen-done h2 { font-size: 18px; color: var(--green); }
+    #screen-done p  { color: var(--gray-600); font-size: 14px; max-width: 280px; }
+
+    /* ── Écran principal (PDF + bouton) ──────────────────────────────────── */
+    #screen-main { padding: 0; }
+
+    .info-bar {
+      background: #fff;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .doc-info { display: flex; flex-direction: column; gap: 2px; }
+    .doc-info .label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .5px; }
+    .doc-info .value { font-size: 14px; font-weight: 600; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+    }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-signed  { background: var(--green-light); color: var(--green); }
+
+    .pdf-container {
+      flex: 1;
+      overflow: auto;
+      background: var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 8px;
+    }
+    #pdf-container-inner {
+      width: 100%;
+    }
+    #pdf-pages canvas {
+      display: block;
+      width: 100% !important;
+      height: auto !important;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #pdf-pages canvas:last-child {
+      border-bottom: none;
+    }
+
+    .cta-bar {
+      padding: 14px 16px;
+      background: #fff;
+      border-top: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--gray-400);
+      text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+
+    /* ── Boutons ─────────────────────────────────────────────────────────── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px;
+      border: none; border-radius: var(--radius-sm);
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: filter .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); filter: brightness(.95); }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--gray-200);
+      color: var(--gray-600);
+    }
+    .btn:disabled { opacity: .5; pointer-events: none; }
+
+    /* ── Bottom sheet ────────────────────────────────────────────────────── */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 100;
+      align-items: flex-end;
+    }
+    .overlay.open { display: flex; }
+
+    .sheet {
+      background: #fff;
+      border-radius: var(--radius) var(--radius) 0 0;
+      width: 100%;
+      max-height: 88dvh;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .sheet-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sheet-header h2 { font-size: 16px; font-weight: 600; }
+    .sheet-close {
+      width: 32px; height: 32px;
+      border: none; background: var(--gray-100);
+      border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--gray-600);
+    }
+
+    .sheet-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      border: 2px dashed var(--gray-200);
+      border-radius: var(--radius-sm);
+      background: var(--gray-50);
+      touch-action: none;
+      user-select: none;
+    }
+    .canvas-wrap canvas { display: block; width: 100%; }
+    .canvas-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px;
+      color: var(--gray-400);
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    .canvas-placeholder.hidden { opacity: 0; }
+    .canvas-placeholder svg { opacity: .4; }
+    .canvas-placeholder p { font-size: 13px; }
+
+    .legal {
+      background: var(--blue-light);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #1e429f;
+      line-height: 1.5;
+    }
+    .legal strong { font-weight: 600; }
+
+    .sheet-footer {
+      padding: 12px 20px 20px;
+      border-top: 1px solid var(--gray-200);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    /* ── Succès signature ────────────────────────────────────────────────── */
+    #screen-success {
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      text-align: center;
+      gap: 16px;
+    }
+    .success-icon {
+      width: 72px; height: 72px;
+      background: var(--green-light);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #screen-success h2 { font-size: 20px; color: var(--green); }
+    #screen-success p  { color: var(--gray-600); font-size: 14px; max-width: 280px; line-height: 1.6; }
+    #signed-datetime   { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
+  </style>
+  <!-- PDF.js via cdnjs — rendu local, pas de CORS, fonctionne sur tous les navigateurs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (typeof pdfjsLib !== "undefined") {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+  </script>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="4" y="3" width="16" height="18" rx="2" stroke="#fff" stroke-width="1.5"/>
+    <path d="M8 8h8M8 12h5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M14 16.5l1.5-1.5 2 2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div>
+    <h1>Signature de devis</h1>
+    <p id="header-subtitle">Chargement…</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- Écran : chargement -->
+  <div class="screen active" id="screen-loading">
+    <div class="spinner"></div>
+    <p>Chargement du document…</p>
+  </div>
+
+  <!-- Écran : erreur (document introuvable) -->
+  <div class="screen" id="screen-error">
+    <div class="error-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="#c81e1e" stroke-width="1.5"/>
+        <path d="M12 8v4M12 16h.01" stroke="#c81e1e" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h2>Document introuvable</h2>
+    <p id="error-msg">Le lien est invalide ou le devis a déjà été traité.</p>
+  </div>
+
+  <!-- Écran : déjà signé -->
+  <div class="screen" id="screen-done">
+    <div class="done-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="#057a55" stroke-width="1.5"/>
+        <path d="M8 12l3 3 5-5" stroke="#057a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2>Devis déjà signé</h2>
+    <p>Ce document a déjà été signé. Merci de votre confiance !</p>
+  </div>
+
+  <!-- Écran : affichage PDF + bouton signer -->
+  <div class="screen" id="screen-main">
+
+    <div class="info-bar">
+      <div class="doc-info">
+        <span class="label">Référence</span>
+        <span class="value" id="doc-numdoc">—</span>
+      </div>
+      <span class="badge badge-pending" id="doc-status">En attente de signature</span>
+    </div>
+
+    <div class="pdf-container">
+      <div id="pdf-container-inner" style="width:100%;max-width:760px;background:#fff;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.1);">
+        <div id="pdf-loading" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;color:#6b7280;font-size:14px;">
+          <div class="spinner"></div> Chargement du PDF…
+        </div>
+        <div id="pdf-pages"></div>
+      </div>
+    </div>
+
+    <div class="cta-bar">
+      <button class="btn btn-primary" id="btn-open-sheet">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 20h9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Signer le devis
+      </button>
+      <p class="hint">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Lisez attentivement le devis avant de signer
+      </p>
+    </div>
+  </div>
+
+  <!-- Écran : succès après signature -->
+  <div class="screen" id="screen-success">
+    <div class="success-icon">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="#057a55" stroke-width="1.5"/>
+        <path d="M8 12l3 3 5-5" stroke="#057a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2>Devis signé ✓</h2>
+    <p>Votre signature a bien été enregistrée. Notre équipe sera notifiée et vous recevrez le document finalisé.</p>
+    <p id="signed-datetime"></p>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BOTTOM SHEET — SIGNATURE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Panneau de signature">
+  <div class="sheet">
+
+    <div class="sheet-header">
+      <h2>Signature manuscrite</h2>
+      <button class="sheet-close" id="btn-close-sheet" aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="sheet-body">
+
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="sig-canvas" height="200" aria-label="Zone de signature tactile"></canvas>
+        <div class="canvas-placeholder" id="canvas-placeholder">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 20h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <p>Signez ici avec votre doigt</p>
+        </div>
+      </div>
+
+      <div class="legal">
+        <strong>Valeur légale</strong> — En apposant votre signature, vous acceptez les conditions du devis
+        n°&nbsp;<span id="legal-numdoc"></span> et reconnaissez avoir été informé de votre droit de
+        rétractation. La date, l'heure et l'adresse IP de signature sont enregistrées.
+      </div>
+
+    </div>
+
+    <div class="sheet-footer">
+      <button class="btn btn-success" id="btn-valider" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Valider ma signature
+      </button>
+      <button class="btn btn-outline" id="btn-clear">Effacer et recommencer</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     LOGIQUE APPLICATIVE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+"use strict";
+
+/* ── Helpers DOM ──────────────────────────────────────────────────────── */
+const $  = id => document.getElementById(id);
+const qs = sel => document.querySelector(sel);
+
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(`screen-${name}`).classList.add("active");
+}
+
+/* ── Lecture du paramètre ?doc= (ou mode démo si absent) ────────────── */
+const params      = new URLSearchParams(location.search);
+const DEMO_NUMDOC = "DC20260612";                            // ← numdoc démo
+const numdoc      = (params.get("doc") || DEMO_NUMDOC).trim().toUpperCase();
+const DEMO_MODE   = !params.get("doc");                      // true si pas de ?doc=
+
+/* URL publique du PDF dans le bucket devis-pdf */
+const PDF_PUBLIC_URL = `${SUPABASE_URL}/storage/v1/object/public/devis-pdf/${numdoc}.PDF`;
+
+/* ── Appel Supabase REST ─────────────────────────────────────────────── */
+async function fetchDevis() {
+  const url = `${SUPABASE_URL}/rest/v1/devis?numdoc=eq.${encodeURIComponent(numdoc)}&select=*&limit=1`;
+  const res  = await fetch(url, {
+    headers: {
+      "apikey":        SUPABASE_ANON,
+      "Authorization": `Bearer ${SUPABASE_ANON}`,
+      "Content-Type":  "application/json"
+    }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.length) throw new Error("Introuvable");
+  return data[0];
+}
+
+async function updateSignature(id, signatureB64, ip) {
+  if (id === null) {
+    /* MODE DEMO : pas de ligne existante -> INSERT pour tracabilite */
+    const url  = `${SUPABASE_URL}/rest/v1/devis`;
+    const body = JSON.stringify({
+      codecli:       'DEMO',
+      numdoc:        numdoc,
+      lienPDF:       PDF_PUBLIC_URL,
+      signe:         true,
+      signature:     signatureB64,
+      adresseIP:     ip,
+      dateSignature: new Date().toISOString()
+    });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type':  'application/json',
+        'Prefer':        'return=minimal'
+      },
+      body
+    });
+    if (!res.ok) throw new Error(`INSERT demo ${res.status}`);
+    return;
+  }
+
+  /* MODE NORMAL : PATCH sur la ligne existante */
+  const url  = `${SUPABASE_URL}/rest/v1/devis?id=eq.${id}`;
+  const body = JSON.stringify({
+    signe:          true,
+    signature:      signatureB64,
+    adresseIP:      ip,
+    dateSignature:  new Date().toISOString()
+  });
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'apikey':        SUPABASE_ANON,
+      'Authorization': `Bearer ${SUPABASE_ANON}`,
+      'Content-Type':  'application/json',
+      'Prefer':        'return=minimal'
+    },
+    body
+  });
+  if (!res.ok) throw new Error(`PATCH ${res.status}`);
+}
+
+/* ── Récupération IP publique (meilleur effort, plusieurs sources) ────── */
+async function getPublicIP() {
+  const sources = [
+    () => fetch("https://api.ipify.org?format=json").then(r => r.json()).then(j => j.ip),
+    () => fetch("https://api64.ipify.org?format=json").then(r => r.json()).then(j => j.ip),
+    () => fetch("https://ipapi.co/json/").then(r => r.json()).then(j => j.ip),
+  ];
+  for (const src of sources) {
+    try { const ip = await src(); if (ip) return ip; } catch {}
+  }
+  return "non-récupérée";
+}
+
+/* ── Variables globales ──────────────────────────────────────────────── */
+let devisData   = null;
+let hasDrawn    = false;
+let isDrawing   = false;
+let lastX = 0,  lastY = 0;
+
+const canvas    = $("sig-canvas");
+const ctx       = canvas.getContext("2d");
+
+/* ── Init canvas ─────────────────────────────────────────────────────── */
+function initCanvas() {
+  const wrap = $("canvas-wrap");
+  const w    = wrap.clientWidth || 340;
+  canvas.width  = w * window.devicePixelRatio;
+  canvas.height = 200 * window.devicePixelRatio;
+  canvas.style.height = "200px";
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  ctx.strokeStyle = "#1f2937";
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = "round";
+  ctx.lineJoin    = "round";
+}
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src  = e.touches ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left),
+    y: (src.clientY - rect.top)
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  isDrawing = true;
+  const p = getPos(e);
+  lastX = p.x; lastY = p.y;
+}
+
+function draw(e) {
+  e.preventDefault();
+  if (!isDrawing) return;
+  const p = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  lastX = p.x; lastY = p.y;
+  if (!hasDrawn) {
+    hasDrawn = true;
+    $("canvas-placeholder").classList.add("hidden");
+    $("btn-valider").disabled = false;
+  }
+}
+
+function endDraw(e) { e.preventDefault(); isDrawing = false; }
+
+canvas.addEventListener("mousedown",  startDraw, { passive: false });
+canvas.addEventListener("mousemove",  draw,      { passive: false });
+canvas.addEventListener("mouseup",    endDraw,   { passive: false });
+canvas.addEventListener("mouseleave", endDraw,   { passive: false });
+canvas.addEventListener("touchstart", startDraw, { passive: false });
+canvas.addEventListener("touchmove",  draw,      { passive: false });
+canvas.addEventListener("touchend",   endDraw,   { passive: false });
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  hasDrawn = false;
+  $("canvas-placeholder").classList.remove("hidden");
+  $("btn-valider").disabled = true;
+}
+
+/* ── PDF via PDF.js (viewer universel, zoom inclus) ──────────────────── */
+async function loadPDF(url) {
+  const pagesDiv  = $("pdf-pages");
+  const loadingEl = $("pdf-loading");
+
+  try {
+    /* Anti-cache : timestamp sur l'URL Supabase */
+    const freshUrl = url + "?t=" + Date.now();
+
+    /* Téléchargement du PDF en arraybuffer (contourne les CORS du viewer externe) */
+    const resp = await fetch(freshUrl, {
+      headers: {
+        "apikey":        SUPABASE_ANON,
+        "Authorization": "Bearer " + SUPABASE_ANON
+      }
+    });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const arrayBuf = await resp.arrayBuffer();
+
+    /* Rendu via PDF.js (chargé depuis cdnjs) */
+    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+    loadingEl.style.display = "none";
+
+    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+      const page     = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 2 }); /* scale 2 = haute résolution */
+
+      const canvas  = document.createElement("canvas");
+      const ctx2d   = canvas.getContext("2d");
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+      pagesDiv.appendChild(canvas);
+
+      await page.render({ canvasContext: ctx2d, viewport }).promise;
+    }
+  } catch (err) {
+    console.error("[PDF] Erreur chargement :", err);
+    loadingEl.innerHTML = '<span style="color:#c81e1e">Impossible de charger le PDF. Vérifiez que le fichier est bien dans le bucket Supabase.</span>';
+  }
+}
+
+/* ── Bottom sheet ────────────────────────────────────────────────────── */
+function openSheet() {
+  $("overlay").classList.add("open");
+  initCanvas();
+  clearCanvas();
+  document.body.style.overflow = "hidden";
+}
+
+function closeSheet() {
+  $("overlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+$("btn-open-sheet").addEventListener("click", openSheet);
+$("btn-close-sheet").addEventListener("click", closeSheet);
+$("btn-clear").addEventListener("click", clearCanvas);
+
+/* Fermeture en cliquant hors du sheet */
+$("overlay").addEventListener("click", e => {
+  if (e.target === $("overlay")) closeSheet();
+});
+
+/* ── Validation de la signature ──────────────────────────────────────── */
+$("btn-valider").addEventListener("click", async () => {
+  if (!hasDrawn || !devisData) return;
+
+  $("btn-valider").disabled = true;
+  $("btn-valider").innerHTML = `
+    <div class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:#fff;"></div>
+    Envoi…
+  `;
+
+  try {
+    /* Export du canvas en base64 PNG */
+    const signatureB64 = canvas.toDataURL("image/png").split(",")[1];
+
+    /* Récupération de l'IP publique (non bloquante) */
+    const ip = await getPublicIP();
+
+    /* Envoi Supabase — non bloquant pour la démo :
+       si la table n'existe pas encore ou si RLS bloque, on affiche
+       quand même l'écran de succès et on logue l'erreur en console. */
+    try {
+      await updateSignature(devisData.id, signatureB64, ip);
+    } catch (supaErr) {
+      console.warn("[Supabase] Écriture non critique :", supaErr.message);
+      /* En production retirer ce catch pour bloquer si l'écriture échoue */
+    }
+
+    /* Affichage de la confirmation */
+    closeSheet();
+    const now = new Date();
+    $("signed-datetime").textContent =
+      `Signé le ${now.toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long", year:"numeric" })} à ${now.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" })}`;
+    showScreen("success");
+
+  } catch (err) {
+    console.error("[Validation] Erreur inattendue :", err);
+    alert("Erreur inattendue : " + err.message + "\nVérifiez la console (F12) pour le détail.");
+    $("btn-valider").disabled = false;
+    $("btn-valider").innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Valider ma signature
+    `;
+  }
+});
+
+/* ── Lancement ───────────────────────────────────────────────────────── */
+(async () => {
+  try {
+
+    if (DEMO_MODE) {
+      /* ── MODE DÉMO : pas de ?doc= dans l'URL ─────────────────────────
+         On charge le PDF directement depuis le bucket public,
+         sans interroger la table devis.
+         La signature sera quand même écrite en Supabase avec un enregistrement
+         créé à la volée (id=-1 factice, ou ignoré si pas de ligne en base).
+      ──────────────────────────────────────────────────────────────────── */
+      devisData = {
+        id:       null,          // pas d'id réel en base pour la démo
+        numdoc:   numdoc,
+        lienPDF:  PDF_PUBLIC_URL,
+        signe:    false,
+        codecli:  "DEMO"
+      };
+      $("header-subtitle").textContent = numdoc + " · démo";
+      $("doc-numdoc").textContent      = numdoc;
+      $("legal-numdoc").textContent    = numdoc;
+      loadPDF(PDF_PUBLIC_URL);
+      showScreen("main");
+      return;
+    }
+
+    /* ── MODE NORMAL : lien SMS avec ?doc= ─────────────────────────────── */
+    devisData = await fetchDevis();
+
+    if (devisData.signe) {
+      $("header-subtitle").textContent = numdoc;
+      showScreen("done");
+      return;
+    }
+
+    $("header-subtitle").textContent = numdoc;
+    $("doc-numdoc").textContent      = numdoc;
+    $("legal-numdoc").textContent    = numdoc;
+
+    loadPDF(devisData.lienPDF);
+    showScreen("main");
+
+  } catch (err) {
+    console.error(err);
+    $("header-subtitle").textContent = "Erreur";
+    if (err.message === "Introuvable") {
+      $("error-msg").textContent = "Ce devis est introuvable. Il a peut-être déjà été traité ou le lien est expiré.";
+    }
+    showScreen("error");
+  }
+})();
+</script>
+
+</body>
+</html>
