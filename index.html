@@ -881,7 +881,6 @@ $("btn-valider").addEventListener("click", async () => {
 
     /* Affichage de la confirmation */
     closeSheet();
-    const now = new Date();
     $("signed-datetime").textContent =
       `Signé le ${now.toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long", year:"numeric" })} à ${now.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" })}`;
     showScreen("success");
