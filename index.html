@@ -704,6 +704,9 @@ function initCanvas() {
   canvas.height = 200 * window.devicePixelRatio;
   canvas.style.height = "200px";
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  /* Fond blanc — indispensable pour que la date soit visible dans le PNG */
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, 200);
   ctx.strokeStyle = "#1f2937";
   ctx.lineWidth   = 2.5;
   ctx.lineCap     = "round";
