@@ -671,7 +671,10 @@ async function updateSignature(id, signatureB64, ip) {
     },
     body
   });
-  if (!res.ok) throw new Error(`PATCH ${res.status}`);
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`PATCH ${res.status} — ${errBody}`);
+  }
 }
 
 /* ── Récupération IP publique (meilleur effort, plusieurs sources) ────── */
