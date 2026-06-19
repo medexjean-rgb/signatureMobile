@@ -756,7 +756,10 @@ canvas.addEventListener("touchmove",  draw,      { passive: false });
 canvas.addEventListener("touchend",   endDraw,   { passive: false });
 
 function clearCanvas() {
+  /* Remet le fond blanc après effacement */
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   hasDrawn = false;
   $("canvas-placeholder").classList.remove("hidden");
   $("btn-valider").disabled = true;
@@ -847,23 +850,24 @@ $("btn-valider").addEventListener("click", async () => {
     });
     const stampText   = "Signé le " + dateStr + " à " + timeStr;
 
-    const dpr         = window.devicePixelRatio || 1;
-    /* fontSize plus grand : 20px * dpr = lisible même compressé à 50x50mm */
-    const fontSize    = 20 * dpr;
+    /* Dessin date/heure — coordonnées en pixels canvas réels (sans DPR) */
+    const canvasW = canvas.width  / (window.devicePixelRatio || 1);
+    const canvasH = canvas.height / (window.devicePixelRatio || 1);
+    const fontSize = 18;  /* px logiques, indépendant du DPR */
+
     ctx.save();
-    ctx.font          = `bold ${fontSize}px Arial, sans-serif`;
-    /* Fond blanc opaque pour que le texte soit toujours lisible */
-    const textW       = ctx.measureText(stampText).width;
-    const padX        = 10 * dpr;
-    const padY        = 6 * dpr;
-    const textH       = fontSize + padY * 2;
-    const textY       = canvas.height - textH - 2 * dpr;
-    ctx.fillStyle     = "rgba(255,255,255,0.95)";
-    ctx.fillRect(0, textY, canvas.width, textH + 2 * dpr);
-    /* Texte en bleu foncé, gras, bien contrasté */
-    ctx.fillStyle     = "#1a3a6b";
-    ctx.globalAlpha   = 1;
-    ctx.fillText(stampText, padX, textY + fontSize + padY - 2 * dpr);
+    ctx.font      = `bold ${fontSize}px Arial, sans-serif`;
+    ctx.textBaseline = "top";
+
+    /* Bande blanche en bas */
+    const bandH = fontSize + 12;
+    const bandY = canvasH - bandH;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, bandY, canvasW, bandH);
+
+    /* Texte bleu foncé */
+    ctx.fillStyle = "#1a3a6b";
+    ctx.fillText(stampText, 8, bandY + 6);
     ctx.restore();
 
     /* Export du canvas en base64 PNG (avec date/heure intégrée) */
