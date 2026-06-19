@@ -833,7 +833,8 @@ $("btn-valider").addEventListener("click", async () => {
   `;
 
   try {
-    /* Ajout date/heure sur le canvas avant export */
+    /* Ajout date/heure sur le canvas avant export
+       Police grande (20px * dpr) pour rester lisible à 50x50mm dans le PDF */
     const now         = new Date();
     const dateStr     = now.toLocaleDateString("fr-FR", {
       day: "2-digit", month: "2-digit", year: "numeric"
@@ -843,24 +844,23 @@ $("btn-valider").addEventListener("click", async () => {
     });
     const stampText   = "Signé le " + dateStr + " à " + timeStr;
 
-    /* On dessine le texte en bas du canvas, sous la signature */
     const dpr         = window.devicePixelRatio || 1;
-    const fontSize    = 13 * dpr;
+    /* fontSize plus grand : 20px * dpr = lisible même compressé à 50x50mm */
+    const fontSize    = 20 * dpr;
     ctx.save();
-    ctx.font          = `${fontSize}px Arial, sans-serif`;
-    ctx.fillStyle     = "#1f2937";
-    ctx.globalAlpha   = 0.7;
-    /* Fond blanc semi-transparent derrière le texte pour lisibilité */
+    ctx.font          = `bold ${fontSize}px Arial, sans-serif`;
+    /* Fond blanc opaque pour que le texte soit toujours lisible */
     const textW       = ctx.measureText(stampText).width;
-    const padX        = 8 * dpr;
-    const padY        = 4 * dpr;
+    const padX        = 10 * dpr;
+    const padY        = 6 * dpr;
     const textH       = fontSize + padY * 2;
-    const textY       = canvas.height - textH - 4 * dpr;
-    ctx.fillStyle     = "rgba(255,255,255,0.75)";
-    ctx.fillRect(6 * dpr, textY, textW + padX * 2, textH);
-    ctx.fillStyle     = "#1f2937";
+    const textY       = canvas.height - textH - 2 * dpr;
+    ctx.fillStyle     = "rgba(255,255,255,0.95)";
+    ctx.fillRect(0, textY, canvas.width, textH + 2 * dpr);
+    /* Texte en bleu foncé, gras, bien contrasté */
+    ctx.fillStyle     = "#1a3a6b";
     ctx.globalAlpha   = 1;
-    ctx.fillText(stampText, 6 * dpr + padX, textY + fontSize + padY - 2 * dpr);
+    ctx.fillText(stampText, padX, textY + fontSize + padY - 2 * dpr);
     ctx.restore();
 
     /* Export du canvas en base64 PNG (avec date/heure intégrée) */
