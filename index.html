@@ -636,8 +636,8 @@ async function updateSignature(id, signatureB64, ip) {
       lienpdf:       PDF_PUBLIC_URL,
       signe:         true,
       signature:     signatureB64,
-      adresseIP:     ip,
-      dateSignature: new Date().toISOString()
+      adresseip:     ip,
+      datesignature: new Date().toISOString()
     });
     const res = await fetch(url, {
       method: 'POST',
@@ -658,8 +658,8 @@ async function updateSignature(id, signatureB64, ip) {
   const body = JSON.stringify({
     signe:          true,
     signature:      signatureB64,
-    adresseIP:      ip,
-    dateSignature:  new Date().toISOString()
+    adresseip:      ip,
+    datesignature:  new Date().toISOString()
   });
   const res = await fetch(url, {
     method: 'PATCH',
