@@ -671,10 +671,7 @@ async function updateSignature(id, signatureB64, ip) {
     },
     body
   });
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`PATCH ${res.status} — ${errBody}`);
-  }
+  if (!res.ok) throw new Error(`PATCH ${res.status}`);
 }
 
 /* ── Récupération IP publique (meilleur effort, plusieurs sources) ────── */
@@ -878,8 +875,7 @@ $("btn-valider").addEventListener("click", async () => {
     try {
       await updateSignature(devisData.id, signatureB64, ip);
     } catch (supaErr) {
-      /* Affichage visible sur mobile pour debug */
-      alert("[Supabase erreur] " + supaErr.message);
+      console.warn("[Supabase] Erreur :", supaErr.message);
     }
 
     /* Affichage de la confirmation */
