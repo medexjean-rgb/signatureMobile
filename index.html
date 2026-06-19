@@ -850,16 +850,18 @@ $("btn-valider").addEventListener("click", async () => {
     });
     const stampText   = "Signé le " + dateStr + " à " + timeStr;
 
-    /* Dessin date/heure — coordonnées en pixels canvas réels (sans DPR) */
+    /* Dessin date/heure — deux lignes pour éviter le dépassement */
     const canvasW = canvas.width  / (window.devicePixelRatio || 1);
     const canvasH = canvas.height / (window.devicePixelRatio || 1);
-    const fontSize = 18;  /* px logiques, indépendant du DPR */
+    const fontSize = 16;
+    const ligne1  = dateStr + " " + timeStr;   /* ex: 19/06/2026 14:35:22 */
+    const ligne2  = "";                          /* on n'utilise qu'une ligne compacte */
 
     ctx.save();
-    ctx.font      = `bold ${fontSize}px Arial, sans-serif`;
+    ctx.font         = `bold ${fontSize}px Arial, sans-serif`;
     ctx.textBaseline = "top";
 
-    /* Bande blanche en bas */
+    /* Bande blanche en bas — hauteur pour 1 ligne */
     const bandH = fontSize + 12;
     const bandY = canvasH - bandH;
     ctx.fillStyle = "#ffffff";
@@ -867,7 +869,7 @@ $("btn-valider").addEventListener("click", async () => {
 
     /* Texte bleu foncé */
     ctx.fillStyle = "#1a3a6b";
-    ctx.fillText(stampText, 8, bandY + 6);
+    ctx.fillText(ligne1, 8, bandY + 6);
     ctx.restore();
 
     /* Export du canvas en base64 PNG (avec date/heure intégrée) */
