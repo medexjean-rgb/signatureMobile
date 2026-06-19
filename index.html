@@ -875,8 +875,8 @@ $("btn-valider").addEventListener("click", async () => {
     try {
       await updateSignature(devisData.id, signatureB64, ip);
     } catch (supaErr) {
-      console.warn("[Supabase] Écriture non critique :", supaErr.message);
-      /* En production retirer ce catch pour bloquer si l'écriture échoue */
+      /* Affichage visible sur mobile pour debug */
+      alert("[Supabase erreur] " + supaErr.message);
     }
 
     /* Affichage de la confirmation */
